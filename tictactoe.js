@@ -1,41 +1,83 @@
 
+"use strict";
+
+/* =========================================
+   XO OVERDRIVE — GAME SETTINGS
+========================================= */
+
+const STORAGE_KEY = "neonTicTacToeStatsV1";
+
+const MUSIC_START = 19; // 0:19
+const MUSIC_END = 92;   // 1:32
+
+const WINNING_COMBINATIONS = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6]
+];
+
+/* =========================================
+   DOM ELEMENTS
+========================================= */
+
 const modeScreen = document.getElementById("modeScreen");
 const gameScreen = document.getElementById("gameScreen");
+
 const aiModeBtn = document.getElementById("aiModeBtn");
 const humanModeBtn = document.getElementById("humanModeBtn");
 const difficultySelect = document.getElementById("difficulty");
+
 const muteBtn = document.getElementById("muteBtn");
+const soundIcon = document.getElementById("soundIcon");
+const soundLabel = document.getElementById("soundLabel");
 
-const boardElement = document.getElementById("board");
-const cells = [...document.querySelectorAll(".cell")];
-const statusElement = document.getElementById("status");
 const modeLabel = document.getElementById("modeLabel");
-
-const xScoreElement = document.getElementById("xScore");
-const oScoreElement = document.getElementById("oScore");
-const drawScoreElement = document.getElementById("drawScore");
 const oLabel = document.getElementById("oLabel");
 
+const xScore = document.getElementById("xScore");
+const oScore = document.getElementById("oScore");
+const drawScore = document.getElementById("drawScore");
+
+const statusText = document.getElementById("status");
+const cells = [...document.querySelectorAll(".cell")];
+
+const newRoundBtn = document.getElementById("newRoundBtn");
+const changeModeBtn = document.getElementById("changeModeBtn");
+const backToMenuBtn = document.getElementById("backToMenuBtn");
+const resetScoresBtn = document.getElementById("resetScoresBtn");
+
+const totalGames = document.getElementById("totalGames");
+const xWinsStat = document.getElementById("xWinsStat");
+const oWinsStat = document.getElementById("oWinsStat");
+const drawsStat = document.getElementById("drawsStat");
+const winRateStat = document.getElementById("winRateStat");
+
+const historyList = document.getElementById("historyList");
+const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
 const celebration = document.getElementById("celebration");
-const celebrationCard = document.querySelector(".celebration-card");
 const celebrationIcon = document.getElementById("celebrationIcon");
 const celebrationEyebrow = document.getElementById("celebrationEyebrow");
 const celebrationTitle = document.getElementById("celebrationTitle");
 const celebrationMessage = document.getElementById("celebrationMessage");
+const playAgainBtn = document.getElementById("playAgainBtn");
+const celebrationCloseBtn = document.getElementById("celebrationCloseBtn");
 const confettiLayer = document.getElementById("confettiLayer");
 
-const STORAGE_KEY = "neonTicTacToeStatsV1";
+/* Music elements */
+const backgroundMusic = document.getElementById("backgroundMusic");
+const musicToggleBtn = document.getElementById("musicToggleBtn");
+const musicVolume = document.getElementById("musicVolume");
+const musicStatus = document.getElementById("musicStatus");
 
-const WINNING_COMBINATIONS = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-];
+/* =========================================
+   GAME STATE
+========================================= */
 
 let board = Array(9).fill("");
 let currentPlayer = "X";
@@ -43,696 +85,993 @@ let gameMode = null;
 let gameOver = false;
 let aiThinking = false;
 let aiTimer = null;
+let gameStartedAt = null;
+
 let muted = false;
+let musicWanted = false;
+let musicLoopTimer = null;
 let audioContext = null;
 let activeMusicNodes = [];
-let gameStartedAt = 0;
 
 let scores = {
-    X: 0,
-    O: 0,
-    draws: 0
+  X: 0,
+  O: 0,
+  draws: 0
 };
-
-function loadStats() {
-    try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-
-        if (
-            saved &&
-            Number.isFinite(saved.total) &&
-            Number.isFinite(saved.xWins) &&
-            Number.isFinite(saved.oWins) &&
-            Number.isFinite(saved.draws) &&
-            Array.isArray(saved.history)
-        ) {
-            return {
-                total: saved.total,
-                xWins: saved.xWins,
-                oWins: saved.oWins,
-                draws: saved.draws,
-                history: saved.history
-            };
-        }
-    } catch (error) {
-        console.warn("Could not load saved game statistics.", error);
-    }
-
-    return {
-        total: 0,
-        xWins: 0,
-        oWins: 0,
-        draws: 0,
-        history: []
-    };
-}
 
 let stats = loadStats();
 
-function saveStats() {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
-    } catch (error) {
-        console.warn("Could not save game statistics.", error);
-    }
+/* =========================================
+   SAVED STATISTICS
+========================================= */
+
+function createDefaultStats() {
+  return {
+    total: 0,
+    xWins: 0,
+    oWins: 0,
+    draws: 0,
+    history: []
+  };
 }
 
-// --------------------------------------------------
-// AUDIO: browser-generated sound effects and music
-// --------------------------------------------------
+function loadStats() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (!saved) {
+      return createDefaultStats();
+    }
+
+    const parsed = JSON.parse(saved);
+
+    return {
+      total: Number(parsed.total) || 0,
+      xWins: Number(parsed.xWins) || 0,
+      oWins: Number(parsed.oWins) || 0,
+      draws: Number(parsed.draws) || 0,
+      history: Array.isArray(parsed.history)
+        ? parsed.history.slice(0, 30)
+        : []
+    };
+  } catch (error) {
+    console.warn("Could not load saved statistics:", error);
+    return createDefaultStats();
+  }
+}
+
+function saveStats() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+  } catch (error) {
+    console.warn("Could not save statistics:", error);
+  }
+}
+
+/* =========================================
+   SOUND EFFECTS
+========================================= */
 
 function getAudioContext() {
-    if (muted) return null;
+  if (muted) return null;
 
-    try {
-        const AudioContextClass =
-            window.AudioContext || window.webkitAudioContext;
+  try {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
 
-        if (!AudioContextClass) return null;
+    if (!AudioContextClass) return null;
 
-        if (!audioContext) {
-            audioContext = new AudioContextClass();
-        }
-
-        if (audioContext.state === "suspended") {
-            audioContext.resume().catch(() => {});
-        }
-
-        return audioContext;
-    } catch (error) {
-        console.warn("Audio is unavailable.", error);
-        return null;
+    if (!audioContext) {
+      audioContext = new AudioContextClass();
     }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => {});
+    }
+
+    return audioContext;
+  } catch (error) {
+    console.warn("Audio is unavailable:", error);
+    return null;
+  }
 }
 
-function playTone(frequency, duration, type = "sine", volume = 0.07, delay = 0) {
-    const ctx = getAudioContext();
-    if (!ctx) return;
+function playTone(frequency, duration = 0.12, type = "sine", volume = 0.06) {
+  const context = getAudioContext();
 
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
+  if (!context || muted) return;
 
-    const startAt = ctx.currentTime + delay;
-    const endAt = startAt + duration;
+  try {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
 
     oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, startAt);
+    oscillator.frequency.setValueAtTime(frequency, context.currentTime);
 
-    gain.gain.setValueAtTime(0.001, startAt);
-    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, endAt);
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+      volume,
+      context.currentTime + 0.015
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      context.currentTime + duration
+    );
 
     oscillator.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(context.destination);
 
-    oscillator.start(startAt);
-    oscillator.stop(endAt + 0.02);
+    activeMusicNodes.push(oscillator);
+
+    oscillator.onended = () => {
+      activeMusicNodes = activeMusicNodes.filter(
+        (node) => node !== oscillator
+      );
+
+      oscillator.disconnect();
+      gain.disconnect();
+    };
+
+    oscillator.start();
+    oscillator.stop(context.currentTime + duration + 0.03);
+  } catch (error) {
+    console.warn("Could not play sound effect:", error);
+  }
 }
 
 function playPlaceSound(player) {
-    if (player === "X") {
-        playTone(650, 0.12, "sine", 0.06);
-        playTone(980, 0.1, "sine", 0.035, 0.06);
-    } else {
-        playTone(440, 0.13, "triangle", 0.06);
-        playTone(660, 0.1, "triangle", 0.035, 0.06);
-    }
+  if (player === "X") {
+    playTone(520, 0.09, "sine", 0.045);
+  } else {
+    playTone(380, 0.1, "sine", 0.045);
+  }
 }
 
 function playWinSound() {
-    stopMusic();
+  playTone(523.25, 0.16, "triangle", 0.06);
 
-    const notes = [
-        [523.25, 0],
-        [659.25, 0.13],
-        [783.99, 0.26],
-        [1046.5, 0.43],
-        [783.99, 0.65],
-        [1046.5, 0.83]
-    ];
+  setTimeout(() => {
+    if (!muted) playTone(659.25, 0.16, "triangle", 0.06);
+  }, 130);
 
-    notes.forEach(([frequency, delay], index) => {
-        playTone(frequency, index === 5 ? 0.48 : 0.22, "triangle", 0.075, delay);
-    });
+  setTimeout(() => {
+    if (!muted) playTone(783.99, 0.24, "triangle", 0.06);
+  }, 260);
 }
 
 function playDrawSound() {
-    stopMusic();
+  playTone(390, 0.14, "sine", 0.045);
 
-    const notes = [
-        [440, 0],
-        [392, 0.22],
-        [349.23, 0.44],
-        [392, 0.68]
-    ];
-
-    notes.forEach(([frequency, delay]) => {
-        playTone(frequency, 0.3, "sine", 0.055, delay);
-    });
+  setTimeout(() => {
+    if (!muted) playTone(330, 0.18, "sine", 0.045);
+  }, 150);
 }
 
 function playLoseSound() {
-    stopMusic();
+  playTone(320, 0.18, "triangle", 0.05);
 
-    const notes = [
-        [392, 0],
-        [349.23, 0.2],
-        [293.66, 0.42],
-        [220, 0.68],
-        [196, 0.96]
-    ];
-
-    notes.forEach(([frequency, delay]) => {
-        playTone(frequency, 0.28, "triangle", 0.06, delay);
-    });
-}
-
-function stopMusic() {
-    activeMusicNodes.forEach((node) => {
-        try {
-            node.stop();
-        } catch {
-            // The oscillator may have already stopped.
-        }
-    });
-
-    activeMusicNodes = [];
+  setTimeout(() => {
+    if (!muted) playTone(240, 0.25, "triangle", 0.05);
+  }, 170);
 }
 
 function stopAllAudio() {
-    stopMusic();
-
-    if (audioContext) {
-        audioContext.suspend().catch(() => {});
+  activeMusicNodes.forEach((node) => {
+    try {
+      node.stop();
+    } catch {
+      // The sound may already have stopped.
     }
+  });
+
+  activeMusicNodes = [];
 }
 
-muteBtn.addEventListener("click", () => {
-    muted = !muted;
+/* =========================================
+   BACKGROUND MUSIC
+   Plays only from 00:19 to 01:32.
+========================================= */
 
-    muteBtn.textContent = muted ? "🔇 Sound Off" : "🔊 Sound On";
-    muteBtn.setAttribute("aria-pressed", String(muted));
+function setMusicStatus(message) {
+  if (musicStatus) {
+    musicStatus.textContent = message;
+  }
+}
 
-    if (muted) {
-        stopAllAudio();
-    } else if (audioContext) {
-        audioContext.resume().catch(() => {});
+function updateMusicButton() {
+  if (!musicToggleBtn) return;
+
+  if (muted) {
+    musicToggleBtn.textContent = "🔇 Muted";
+  } else if (musicWanted && !backgroundMusic.paused) {
+    musicToggleBtn.textContent = "Ⅱ Pause Music";
+  } else {
+    musicToggleBtn.textContent = "▶ Play Music";
+  }
+}
+
+function startBackgroundMusic() {
+  if (!backgroundMusic) return;
+
+  if (muted) {
+    setMusicStatus("Sound is muted");
+    updateMusicButton();
+    return;
+  }
+
+  musicWanted = true;
+
+  // If the file has not reached the requested segment yet,
+  // begin at 19 seconds.
+  if (
+    backgroundMusic.currentTime < MUSIC_START ||
+    backgroundMusic.currentTime >= MUSIC_END
+  ) {
+    backgroundMusic.currentTime = MUSIC_START;
+  }
+
+  backgroundMusic.volume = Number(musicVolume.value) / 100;
+
+  const playPromise = backgroundMusic.play();
+
+  if (playPromise && typeof playPromise.then === "function") {
+    playPromise
+      .then(() => {
+        setMusicStatus("Playing · 00:19–01:32 · Loop enabled");
+        updateMusicButton();
+      })
+      .catch((error) => {
+        setMusicStatus("Click Play Music if playback does not start");
+        updateMusicButton();
+        console.warn("Music playback could not start:", error);
+      });
+  }
+
+  updateMusicButton();
+}
+
+function pauseBackgroundMusic() {
+  if (!backgroundMusic) return;
+
+  musicWanted = false;
+  backgroundMusic.pause();
+
+  setMusicStatus("Music paused");
+  updateMusicButton();
+}
+
+function toggleBackgroundMusic() {
+  if (muted) {
+    muted = false;
+    updateMuteButton();
+  }
+
+  if (!backgroundMusic.paused && musicWanted) {
+    pauseBackgroundMusic();
+  } else {
+    startBackgroundMusic();
+  }
+}
+
+function checkMusicSegment() {
+  if (!backgroundMusic || !musicWanted || muted) return;
+
+  // The music file should be longer than 1:32.
+  // Seek back to 19 seconds when the segment ends.
+  if (
+    backgroundMusic.currentTime >= MUSIC_END ||
+    backgroundMusic.ended
+  ) {
+    backgroundMusic.currentTime = MUSIC_START;
+
+    if (musicWanted && !muted) {
+      backgroundMusic.play().catch(() => {
+        setMusicStatus("Click Play Music to resume");
+      });
     }
-});
+  }
+}
 
-// --------------------------------------------------
-// GAME SETUP
-// --------------------------------------------------
+function initialiseMusic() {
+  if (!backgroundMusic) return;
 
-aiModeBtn.addEventListener("click", () => startGame("ai"));
-humanModeBtn.addEventListener("click", () => startGame("human"));
+  // We handle the segment loop ourselves rather than looping
+  // the entire audio file.
+  backgroundMusic.loop = false;
+  backgroundMusic.preload = "auto";
+  backgroundMusic.volume = Number(musicVolume.value) / 100;
+
+  musicLoopTimer = window.setInterval(checkMusicSegment, 250);
+
+  backgroundMusic.addEventListener("error", () => {
+    setMusicStatus("Could not load music.mp3 — check the filename");
+    musicToggleBtn.textContent = "▶ Try Again";
+  });
+
+  backgroundMusic.addEventListener("ended", () => {
+    if (musicWanted && !muted) {
+      backgroundMusic.currentTime = MUSIC_START;
+      backgroundMusic.play().catch(() => {
+        setMusicStatus("Click Play Music to resume");
+      });
+    }
+  });
+
+  backgroundMusic.addEventListener("pause", updateMusicButton);
+  backgroundMusic.addEventListener("play", updateMusicButton);
+
+  updateMusicButton();
+}
+
+function updateMuteButton() {
+  muteBtn.setAttribute("aria-pressed", String(muted));
+
+  if (muted) {
+    soundIcon.textContent = "🔇";
+    soundLabel.textContent = "Sound Off";
+    pauseBackgroundMusic();
+    stopAllAudio();
+  } else {
+    soundIcon.textContent = "🔊";
+    soundLabel.textContent = "Sound On";
+
+    if (gameMode && !gameScreen.hidden) {
+      startBackgroundMusic();
+    }
+  }
+
+  updateMusicButton();
+}
+
+/* =========================================
+   GAME SETUP
+========================================= */
 
 function startGame(mode) {
-    clearTimeout(aiTimer);
-    stopAllAudio();
+  clearTimeout(aiTimer);
+  stopAllAudio();
 
-    gameMode = mode;
-    modeScreen.hidden = true;
-    gameScreen.hidden = false;
-    celebration.hidden = true;
+  gameMode = mode;
+  gameOver = false;
+  aiThinking = false;
 
-    modeLabel.textContent = mode === "ai"
-        ? `VS COMPUTER · ${difficultySelect.value.toUpperCase()}`
-        : "TWO PLAYERS";
+  modeScreen.hidden = true;
+  gameScreen.hidden = false;
 
-    oLabel.textContent = mode === "ai" ? "AI · O" : "PLAYER O";
+  if (mode === "ai") {
+    modeLabel.textContent = `PLAYER VS COMPUTER · ${difficultySelect.value.toUpperCase()}`;
+    oLabel.textContent = "COMPUTER";
+  } else {
+    modeLabel.textContent = "PLAYER VS PLAYER";
+    oLabel.textContent = "PLAYER O";
+  }
 
-    startNewRound();
+  startNewRound();
+
+  // This call follows a button click, which helps browsers
+  // permit audio playback.
+  startBackgroundMusic();
+}
+
+function returnToMenu() {
+  clearTimeout(aiTimer);
+
+  gameMode = null;
+  aiThinking = false;
+  gameOver = true;
+
+  pauseBackgroundMusic();
+  stopAllAudio();
+
+  celebration.hidden = true;
+  gameScreen.hidden = true;
+  modeScreen.hidden = false;
 }
 
 function startNewRound() {
-    clearTimeout(aiTimer);
-    stopMusic();
+  clearTimeout(aiTimer);
 
-    board = Array(9).fill("");
-    currentPlayer = "X";
-    gameOver = false;
-    aiThinking = false;
-    gameStartedAt = Date.now();
+  board = Array(9).fill("");
+  currentPlayer = "X";
+  gameOver = false;
+  aiThinking = false;
+  gameStartedAt = Date.now();
 
-    celebration.hidden = true;
-    confettiLayer.replaceChildren();
+  celebration.hidden = true;
+  confettiLayer.innerHTML = "";
 
-    cells.forEach((cell, index) => {
-        cell.textContent = "";
-        cell.className = "cell";
-        cell.disabled = false;
-        cell.setAttribute("aria-label", `Cell ${index + 1}, empty`);
-    });
-
-    statusElement.classList.remove("thinking");
-    updateBoard();
-    updateScores();
-
-    statusElement.textContent = "PLAYER X'S TURN";
-}
-
-document.getElementById("newRoundBtn").addEventListener("click", startNewRound);
-
-document.getElementById("changeModeBtn").addEventListener("click", () => {
-    clearTimeout(aiTimer);
-    stopAllAudio();
-
-    gameScreen.hidden = true;
-    celebration.hidden = true;
-    modeScreen.hidden = false;
-    gameMode = null;
-
-    renderStats();
-});
-
-document.getElementById("resetScoresBtn").addEventListener("click", () => {
-    const confirmed = window.confirm(
-        "Reset all scores and game history? This cannot be undone."
+  cells.forEach((cell, index) => {
+    cell.textContent = "";
+    cell.classList.remove(
+      "mark-x",
+      "mark-o",
+      "winning-cell"
     );
 
-    if (!confirmed) return;
+    cell.setAttribute(
+      "aria-label",
+      `Row ${Math.floor(index / 3) + 1}, column ${(index % 3) + 1}, empty`
+    );
+  });
 
-    scores = { X: 0, O: 0, draws: 0 };
+  statusText.textContent = "Player X's turn";
+  updateBoard();
+  updateScores();
 
-    stats = {
-        total: 0,
-        xWins: 0,
-        oWins: 0,
-        draws: 0,
-        history: []
-    };
-
-    saveStats();
-    updateScores();
-    renderStats();
-});
-
-document.getElementById("clearHistoryBtn").addEventListener("click", () => {
-    stats.history = [];
-    saveStats();
-    renderStats();
-});
-
-document.getElementById("playAgainBtn").addEventListener("click", startNewRound);
-
-document.getElementById("celebrationCloseBtn").addEventListener("click", () => {
-    celebration.hidden = true;
-});
-
-// --------------------------------------------------
-// BOARD AND PLAYER MOVES
-// --------------------------------------------------
-
-cells.forEach((cell) => {
-    cell.addEventListener("click", () => {
-        const index = Number(cell.dataset.index);
-
-        if (
-            gameOver ||
-            aiThinking ||
-            board[index] !== "" ||
-            (gameMode === "ai" && currentPlayer === "O")
-        ) {
-            return;
-        }
-
-        makeMove(index, currentPlayer);
-    });
-});
-
-function makeMove(index, player) {
-    if (gameOver || board[index] !== "") return;
-
-    board[index] = player;
-    playPlaceSound(player);
-    updateBoard();
-
-    const winningLine = getWinningLine(board);
-
-    if (winningLine) {
-        finishGame(player, winningLine);
-        return;
-    }
-
-    if (board.every((cell) => cell !== "")) {
-        finishGame("draw", []);
-        return;
-    }
-
-    currentPlayer = player === "X" ? "O" : "X";
-
-    if (gameMode === "ai" && currentPlayer === "O") {
-        aiThinking = true;
-        statusElement.textContent = "AI IS THINKING...";
-        statusElement.classList.add("thinking");
-        updateBoard();
-
-        aiTimer = setTimeout(() => {
-            if (gameOver) return;
-
-            const aiMove = getAIMove();
-
-            aiThinking = false;
-            statusElement.classList.remove("thinking");
-
-            if (aiMove !== -1) {
-                makeMove(aiMove, "O");
-            }
-        }, 450);
-    } else {
-        statusElement.textContent = `PLAYER ${currentPlayer}'S TURN`;
-        statusElement.classList.remove("thinking");
-        updateBoard();
-    }
+  // Do not restart the music here. It should continue across rounds.
 }
 
 function updateBoard() {
-    cells.forEach((cell, index) => {
-        const mark = board[index];
+  cells.forEach((cell, index) => {
+    const value = board[index];
 
-        cell.textContent = mark;
-        cell.classList.toggle("x", mark === "X");
-        cell.classList.toggle("o", mark === "O");
+    cell.textContent = value;
+    cell.classList.toggle("mark-x", value === "X");
+    cell.classList.toggle("mark-o", value === "O");
 
-        const aiTurn = gameMode === "ai" && currentPlayer === "O";
+    const row = Math.floor(index / 3) + 1;
+    const column = (index % 3) + 1;
+    const description = value ? value : "empty";
 
-        cell.disabled = gameOver || aiThinking || aiTurn || mark !== "";
+    cell.setAttribute(
+      "aria-label",
+      `Row ${row}, column ${column}, ${description}`
+    );
 
-        cell.setAttribute(
-            "aria-label",
-            `Cell ${index + 1}, ${mark || "empty"}`
-        );
-    });
+    const isAITurn =
+      gameMode === "ai" &&
+      currentPlayer === "O";
+
+    cell.disabled =
+      gameOver ||
+      aiThinking ||
+      Boolean(value) ||
+      isAITurn;
+  });
 }
+
+function updateScores() {
+  xScore.textContent = scores.X;
+  oScore.textContent = scores.O;
+  drawScore.textContent = scores.draws;
+}
+
+/* =========================================
+   PLAYER MOVES
+========================================= */
+
+function handleCellClick(event) {
+  const index = Number(event.currentTarget.dataset.index);
+
+  if (gameOver || aiThinking || board[index]) return;
+
+  if (gameMode === "ai" && currentPlayer === "O") {
+    return;
+  }
+
+  makeMove(index, currentPlayer);
+}
+
+function makeMove(index, player) {
+  if (gameOver || board[index]) return;
+
+  board[index] = player;
+
+  playPlaceSound(player);
+  updateBoard();
+
+  const winningLine = getWinningLine(board);
+
+  if (winningLine) {
+    finishGame(player, winningLine);
+    return;
+  }
+
+  if (board.every(Boolean)) {
+    finishGame("draw");
+    return;
+  }
+
+  currentPlayer = player === "X" ? "O" : "X";
+
+  if (gameMode === "ai" && currentPlayer === "O") {
+    aiThinking = true;
+    statusText.textContent = "Computer is thinking...";
+    updateBoard();
+
+    aiTimer = window.setTimeout(() => {
+      if (gameOver) return;
+
+      const aiMove = getAIMove();
+
+      aiThinking = false;
+
+      if (aiMove !== -1 && aiMove !== undefined) {
+        makeMove(aiMove, "O");
+      }
+    }, 450);
+  } else {
+    statusText.textContent = `Player ${currentPlayer}'s turn`;
+    updateBoard();
+  }
+}
+
+/* =========================================
+   WIN DETECTION
+========================================= */
 
 function getWinningLine(currentBoard) {
-    return WINNING_COMBINATIONS.find(([a, b, c]) => {
-        return (
-            currentBoard[a] &&
-            currentBoard[a] === currentBoard[b] &&
-            currentBoard[a] === currentBoard[c]
-        );
-    }) || null;
+  for (const combination of WINNING_COMBINATIONS) {
+    const [a, b, c] = combination;
+
+    if (
+      currentBoard[a] &&
+      currentBoard[a] === currentBoard[b] &&
+      currentBoard[a] === currentBoard[c]
+    ) {
+      return combination;
+    }
+  }
+
+  return null;
 }
 
-// --------------------------------------------------
-// AI: EASY, MEDIUM, HARD
-// --------------------------------------------------
+/* =========================================
+   AI
+========================================= */
+
+function getEmptyCells(currentBoard) {
+  return currentBoard
+    .map((value, index) => value === "" ? index : -1)
+    .filter((index) => index !== -1);
+}
 
 function getAIMove() {
-    const emptyCells = board
-        .map((value, index) => value === "" ? index : -1)
-        .filter((index) => index !== -1);
+  const emptyCells = getEmptyCells(board);
 
-    if (emptyCells.length === 0) return -1;
+  if (emptyCells.length === 0) return -1;
 
-    const difficulty = difficultySelect.value;
+  const difficulty = difficultySelect.value;
 
-    if (difficulty === "easy") {
-        return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+  if (difficulty === "easy") {
+    return emptyCells[
+      Math.floor(Math.random() * emptyCells.length)
+    ];
+  }
+
+  if (difficulty === "medium" && Math.random() < 0.35) {
+    return emptyCells[
+      Math.floor(Math.random() * emptyCells.length)
+    ];
+  }
+
+  let bestScore = -Infinity;
+  let bestMove = emptyCells[0];
+
+  for (const index of emptyCells) {
+    board[index] = "O";
+
+    const score = minimax(board, 0, false);
+
+    board[index] = "";
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = index;
     }
+  }
 
-    if (difficulty === "medium") {
-        // Usually plays intelligently, but sometimes makes a random move.
-        if (Math.random() < 0.35) {
-            return emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        }
-    }
-
-    let bestScore = -Infinity;
-    let bestMove = emptyCells[0];
-
-    for (const index of emptyCells) {
-        board[index] = "O";
-
-        const score = minimax(board, 0, false);
-
-        board[index] = "";
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestMove = index;
-        }
-    }
-
-    return bestMove;
+  return bestMove;
 }
 
 function minimax(currentBoard, depth, isMaximizing) {
-    const winner = getWinningLine(currentBoard);
+  const winningLine = getWinningLine(currentBoard);
 
-    if (winner) {
-        return currentBoard[winner[0]] === "O" ? 10 - depth : depth - 10;
-    }
+  if (winningLine) {
+    const winner = currentBoard[winningLine[0]];
 
-    if (currentBoard.every((cell) => cell !== "")) {
-        return 0;
-    }
+    if (winner === "O") return 10 - depth;
+    if (winner === "X") return depth - 10;
+  }
 
-    if (isMaximizing) {
-        let bestScore = -Infinity;
+  const emptyCells = getEmptyCells(currentBoard);
 
-        for (let i = 0; i < 9; i++) {
-            if (currentBoard[i] !== "") continue;
+  if (emptyCells.length === 0) {
+    return 0;
+  }
 
-            currentBoard[i] = "O";
-            bestScore = Math.max(
-                bestScore,
-                minimax(currentBoard, depth + 1, false)
-            );
-            currentBoard[i] = "";
-        }
+  if (isMaximizing) {
+    let bestScore = -Infinity;
 
-        return bestScore;
-    }
+    for (const index of emptyCells) {
+      currentBoard[index] = "O";
 
-    let bestScore = Infinity;
+      const score = minimax(currentBoard, depth + 1, false);
 
-    for (let i = 0; i < 9; i++) {
-        if (currentBoard[i] !== "") continue;
-
-        currentBoard[i] = "X";
-        bestScore = Math.min(
-            bestScore,
-            minimax(currentBoard, depth + 1, true)
-        );
-        currentBoard[i] = "";
+      currentBoard[index] = "";
+      bestScore = Math.max(bestScore, score);
     }
 
     return bestScore;
+  }
+
+  let bestScore = Infinity;
+
+  for (const index of emptyCells) {
+    currentBoard[index] = "X";
+
+    const score = minimax(currentBoard, depth + 1, true);
+
+    currentBoard[index] = "";
+    bestScore = Math.min(bestScore, score);
+  }
+
+  return bestScore;
 }
 
-// --------------------------------------------------
-// GAME RESULTS AND VICTORY CELEBRATION
-// --------------------------------------------------
+/* =========================================
+   FINISH GAME
+========================================= */
 
-function finishGame(result, winningLine) {
-    if (gameOver) return;
+function finishGame(result, winningLine = null) {
+  gameOver = true;
+  aiThinking = false;
 
-    gameOver = true;
-    aiThinking = false;
-    clearTimeout(aiTimer);
+  clearTimeout(aiTimer);
 
-    cells.forEach((cell) => {
-        cell.disabled = true;
+  cells.forEach((cell) => {
+    cell.disabled = true;
+  });
+
+  if (winningLine) {
+    winningLine.forEach((index) => {
+      cells[index].classList.add("winning-cell");
     });
+  }
 
-    if (result === "draw") {
-        scores.draws++;
-        statusElement.textContent = "IT'S A DRAW!";
+  if (result === "draw") {
+    scores.draws++;
+    statusText.textContent = "It's a draw!";
+    playDrawSound();
+  } else {
+    scores[result]++;
+    statusText.textContent = `Player ${result} wins!`;
+
+    if (gameMode === "ai" && result === "O") {
+      playLoseSound();
     } else {
-        scores[result]++;
-        statusElement.textContent = `PLAYER ${result} WINS!`;
-
-        winningLine.forEach((index) => {
-            cells[index].classList.add("winning");
-        });
+      playWinSound();
     }
+  }
 
-    updateScores();
-    recordResult(result);
-    showCelebration(result);
+  updateScores();
+  recordResult(result);
+  showCelebration(result);
 }
+
+/* =========================================
+   HISTORY AND STATISTICS
+========================================= */
 
 function recordResult(result) {
-    const durationSeconds = Math.max(
-        1,
-        Math.round((Date.now() - gameStartedAt) / 1000)
-    );
+  stats.total++;
 
-    stats.total++;
+  if (result === "X") {
+    stats.xWins++;
+  } else if (result === "O") {
+    stats.oWins++;
+  } else {
+    stats.draws++;
+  }
 
-    if (result === "X") stats.xWins++;
-    else if (result === "O") stats.oWins++;
-    else stats.draws++;
+  const durationSeconds = gameStartedAt
+    ? Math.max(0, Math.round((Date.now() - gameStartedAt) / 1000))
+    : 0;
 
-    stats.history.unshift({
-        result,
-        mode: gameMode,
-        difficulty: gameMode === "ai" ? difficultySelect.value : null,
-        date: new Date().toISOString(),
-        duration: durationSeconds
-    });
+  const record = {
+    result,
+    mode: gameMode,
+    difficulty: gameMode === "ai" ? difficultySelect.value : null,
+    date: new Date().toISOString(),
+    duration: durationSeconds
+  };
 
-    // Keep the latest 30 matches.
-    stats.history = stats.history.slice(0, 30);
+  stats.history.unshift(record);
+  stats.history = stats.history.slice(0, 30);
 
-    saveStats();
-    renderStats();
-}
-
-function showCelebration(result) {
-    celebration.hidden = false;
-    celebrationCard.className = "celebration-card";
-    confettiLayer.replaceChildren();
-
-    if (result === "draw") {
-        celebrationCard.classList.add("draw");
-        celebrationIcon.textContent = "🤝";
-        celebrationEyebrow.textContent = "MATCH COMPLETE";
-        celebrationTitle.textContent = "IT'S A DRAW!";
-        celebrationMessage.textContent =
-            "A close battle! No winner this time. Ready for another round?";
-
-        playDrawSound();
-    } else {
-        const playerWon = gameMode === "human" || result === "X";
-
-        if (playerWon) {
-            celebrationIcon.textContent = "🏆";
-            celebrationEyebrow.textContent = "INCREDIBLE PERFORMANCE";
-            celebrationTitle.textContent = `${result} WINS!`;
-            celebrationMessage.textContent = gameMode === "ai"
-                ? "You defeated the AI. The arena belongs to you!"
-                : `Player ${result} takes the victory! Well played!`;
-
-            playWinSound();
-            createConfetti();
-        } else {
-            celebrationCard.classList.add("defeat");
-            celebrationIcon.textContent = "💥";
-            celebrationEyebrow.textContent = "MATCH COMPLETE";
-            celebrationTitle.textContent = "DEFEAT!";
-            celebrationMessage.textContent =
-                "The AI wins this round. Learn from the moves and try again!";
-
-            playLoseSound();
-        }
-    }
-}
-
-function createConfetti() {
-    const amount = 90;
-
-    for (let i = 0; i < amount; i++) {
-        const piece = document.createElement("span");
-
-        piece.className = "confetti";
-        piece.style.left = `${Math.random() * 100}%`;
-        piece.style.setProperty(
-            "--fall-duration",
-            `${2 + Math.random() * 2.5}s`
-        );
-        piece.style.setProperty(
-            "--fall-delay",
-            `${Math.random() * 0.9}s`
-        );
-        piece.style.setProperty(
-            "--drift",
-            `${Math.random() * 180 - 90}px`
-        );
-
-        confettiLayer.appendChild(piece);
-    }
-}
-
-// --------------------------------------------------
-// SCOREBOARD AND GAME HISTORY
-// --------------------------------------------------
-
-function updateScores() {
-    xScoreElement.textContent = scores.X;
-    oScoreElement.textContent = scores.O;
-    drawScoreElement.textContent = scores.draws;
+  saveStats();
+  renderStats();
 }
 
 function renderStats() {
-    document.getElementById("totalGames").textContent =
-        `${stats.total} ${stats.total === 1 ? "GAME" : "GAMES"}`;
+  totalGames.textContent = stats.total;
+  xWinsStat.textContent = stats.xWins;
+  oWinsStat.textContent = stats.oWins;
+  drawsStat.textContent = stats.draws;
 
-    document.getElementById("xWinsStat").textContent = stats.xWins;
-    document.getElementById("oWinsStat").textContent = stats.oWins;
-    document.getElementById("drawsStat").textContent = stats.draws;
+  const winRate = stats.total
+    ? Math.round((stats.xWins / stats.total) * 100)
+    : 0;
 
-    const winRate = stats.total
-        ? Math.round((stats.xWins / stats.total) * 100)
-        : 0;
+  winRateStat.textContent = `${winRate}%`;
 
-    document.getElementById("winRateStat").textContent = `${winRate}%`;
-
-    const historyList = document.getElementById("historyList");
-    historyList.replaceChildren();
-
-    if (stats.history.length === 0) {
-        const emptyItem = document.createElement("li");
-        emptyItem.className = "empty-history";
-        emptyItem.textContent =
-            stats.total > 0
-                ? "No recent matches saved. Your overall stats are still available."
-                : "Your completed matches will appear here.";
-
-        historyList.appendChild(emptyItem);
-        return;
-    }
-
-    stats.history.forEach((match) => {
-        const item = document.createElement("li");
-
-        const result = document.createElement("span");
-        result.className = "history-result";
-
-        if (match.result === "draw") {
-            result.textContent = "DRAW";
-            result.classList.add("draw-result");
-        } else {
-            result.textContent = `PLAYER ${match.result} WON`;
-            result.classList.add(
-                match.result === "X" ? "x-result" : "o-result"
-            );
-        }
-
-        const details = document.createElement("span");
-        details.className = "history-meta";
-
-        const modeText = match.mode === "ai"
-            ? `VS AI${match.difficulty ? ` · ${match.difficulty}` : ""}`
-            : "2 PLAYERS";
-
-        const date = new Date(match.date);
-        const validDate = !Number.isNaN(date.getTime());
-
-        const dateText = validDate
-            ? date.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric"
-            }) + " " + date.toLocaleTimeString(undefined, {
-                hour: "2-digit",
-                minute: "2-digit"
-            })
-            : "Previous match";
-
-        details.textContent =
-            `${modeText} · ${dateText} · ${match.duration || 0}s`;
-
-        item.append(result, details);
-        historyList.appendChild(item);
-    });
+  renderHistory();
 }
 
-// --------------------------------------------------
-// INITIAL DISPLAY
-// --------------------------------------------------
+function renderHistory() {
+  historyList.innerHTML = "";
 
-renderStats();
+  if (!stats.history.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-history";
+
+    const symbol = document.createElement("span");
+    symbol.textContent = "⌁";
+
+    const message = document.createElement("p");
+    message.textContent = "No matches recorded yet.";
+
+    const hint = document.createElement("small");
+    hint.textContent = "Your recent results will appear here.";
+
+    empty.append(symbol, message, hint);
+    historyList.appendChild(empty);
+    return;
+  }
+
+  stats.history.forEach((record) => {
+    const item = document.createElement("article");
+    item.className = "history-item";
+
+    const main = document.createElement("div");
+    main.className = "history-main";
+
+    const badge = document.createElement("div");
+    badge.className = "history-badge";
+
+    if (record.result === "draw") {
+      badge.classList.add("draw");
+      badge.textContent = "=";
+    } else {
+      badge.classList.add(record.result.toLowerCase());
+      badge.textContent = record.result;
+    }
+
+    const details = document.createElement("div");
+
+    const title = document.createElement("p");
+    title.className = "history-title";
+
+    if (record.result === "draw") {
+      title.textContent = "Match Draw";
+    } else {
+      title.textContent = `Player ${record.result} Won`;
+    }
+
+    const meta = document.createElement("p");
+    meta.className = "history-meta";
+
+    const modeText = record.mode === "ai"
+      ? `VS Computer${record.difficulty ? ` · ${record.difficulty}` : ""}`
+      : "VS Friend";
+
+    let dateText = "Unknown date";
+
+    if (record.date) {
+      const parsedDate = new Date(record.date);
+
+      if (!Number.isNaN(parsedDate.getTime())) {
+        dateText = parsedDate.toLocaleString();
+      }
+    }
+
+    const durationText = formatDuration(Number(record.duration) || 0);
+
+    meta.textContent = `${modeText} · ${dateText} · ${durationText}`;
+
+    details.append(title, meta);
+    main.append(badge, details);
+
+    const resultLabel = document.createElement("span");
+    resultLabel.className = "history-result";
+
+    if (record.result === "draw") {
+      resultLabel.classList.add("draw");
+      resultLabel.textContent = "DRAW";
+    } else {
+      resultLabel.classList.add("win");
+      resultLabel.textContent = "VICTORY";
+    }
+
+    item.append(main, resultLabel);
+    historyList.appendChild(item);
+  });
+}
+
+function formatDuration(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return minutes > 0
+    ? `${minutes}m ${seconds}s`
+    : `${seconds}s`;
+}
+
+/* =========================================
+   CELEBRATION
+========================================= */
+
+function showCelebration(result) {
+  celebration.hidden = false;
+  confettiLayer.innerHTML = "";
+
+  if (result === "draw") {
+    celebrationIcon.textContent = "🤝";
+    celebrationEyebrow.textContent = "WELL PLAYED";
+    celebrationTitle.textContent = "IT'S A DRAW!";
+    celebrationMessage.textContent =
+      "An even match. Ready to break the tie?";
+  } else if (gameMode === "ai" && result === "O") {
+    celebrationIcon.textContent = "🤖";
+    celebrationEyebrow.textContent = "AI VICTORY";
+    celebrationTitle.textContent = "COMPUTER WINS!";
+    celebrationMessage.textContent =
+      "The computer takes this round. Give it another shot!";
+  } else {
+    celebrationIcon.textContent = "🏆";
+    celebrationEyebrow.textContent = "VICTORY";
+    celebrationTitle.textContent = `PLAYER ${result} WINS!`;
+    celebrationMessage.textContent =
+      "An incredible move. The arena is yours!";
+
+    createConfetti();
+  }
+}
+
+function closeCelebration() {
+  celebration.hidden = true;
+  confettiLayer.innerHTML = "";
+}
+
+function createConfetti() {
+  const colors = [
+    "#00e5ff",
+    "#ff2d95",
+    "#a855f7",
+    "#52ffb8",
+    "#ffffff"
+  ];
+
+  for (let i = 0; i < 75; i++) {
+    const piece = document.createElement("span");
+    piece.className = "confetti";
+
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.setProperty(
+      "--confetti-color",
+      colors[Math.floor(Math.random() * colors.length)]
+    );
+    piece.style.setProperty(
+      "--fall-duration",
+      `${2 + Math.random() * 3}s`
+    );
+    piece.style.setProperty(
+      "--drift",
+      `${Math.random() * 180 - 90}px`
+    );
+
+    piece.style.animationDelay = `${Math.random() * 0.8}s`;
+
+    confettiLayer.appendChild(piece);
+  }
+}
+
+/* =========================================
+   EVENT LISTENERS
+========================================= */
+
+aiModeBtn.addEventListener("click", () => {
+  startGame("ai");
+});
+
+humanModeBtn.addEventListener("click", () => {
+  startGame("human");
+});
+
+cells.forEach((cell) => {
+  cell.addEventListener("click", handleCellClick);
+});
+
+newRoundBtn.addEventListener("click", () => {
+  startNewRound();
+});
+
+changeModeBtn.addEventListener("click", returnToMenu);
+backToMenuBtn.addEventListener("click", returnToMenu);
+
+resetScoresBtn.addEventListener("click", () => {
+  const confirmed = window.confirm(
+    "Reset the current scoreboard and all saved statistics?"
+  );
+
+  if (!confirmed) return;
+
+  scores = {
+    X: 0,
+    O: 0,
+    draws: 0
+  };
+
+  stats = createDefaultStats();
+
+  saveStats();
+  updateScores();
+  renderStats();
+  startNewRound();
+});
+
+clearHistoryBtn.addEventListener("click", () => {
+  if (!stats.history.length) return;
+
+  const confirmed = window.confirm(
+    "Clear your match history? This will not reset your statistics."
+  );
+
+  if (!confirmed) return;
+
+  stats.history = [];
+  saveStats();
+  renderHistory();
+});
+
+playAgainBtn.addEventListener("click", () => {
+  startNewRound();
+});
+
+celebrationCloseBtn.addEventListener("click", closeCelebration);
+
+celebration.addEventListener("click", (event) => {
+  if (event.target === celebration) {
+    closeCelebration();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !celebration.hidden) {
+    closeCelebration();
+  }
+});
+
+muteBtn.addEventListener("click", () => {
+  muted = !muted;
+  updateMuteButton();
+});
+
+musicToggleBtn.addEventListener("click", toggleBackgroundMusic);
+
+musicVolume.addEventListener("input", () => {
+  const volume = Number(musicVolume.value) / 100;
+
+  backgroundMusic.volume = volume;
+
+  if (volume === 0) {
+    setMusicStatus("Volume is at 0%");
+  } else if (!muted && !backgroundMusic.paused) {
+    setMusicStatus(`Playing · ${Math.round(volume * 100)}% volume`);
+  }
+});
+
+difficultySelect.addEventListener("change", () => {
+  if (gameMode === "ai") {
+    modeLabel.textContent =
+      `PLAYER VS COMPUTER · ${difficultySelect.value.toUpperCase()}`;
+  }
+});
+
+/* =========================================
+   INITIALISE
+========================================= */
+
+initialiseMusic();
 updateScores();
+renderStats();

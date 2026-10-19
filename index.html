@@ -1,168 +1,304 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>XO Overdrive</title>
-    <link rel="stylesheet" href="./tictactoe.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#050510">
+  <meta name="description" content="XO Overdrive — a neon Tic Tac Toe game.">
+  <title>XO Overdrive</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./tictactoe.css">
 </head>
+
 <body>
-    <main class="app">
-        <header class="topbar">
-            <a class="logo" href="#">NEON<span>XO</span></a>
-            <button id="muteBtn" class="mute-btn" type="button" aria-pressed="false">
-                🔊 Sound On
-            </button>
-        </header>
+  <div class="background-effects" aria-hidden="true">
+    <div class="glow glow-blue"></div>
+    <div class="glow glow-pink"></div>
+    <div class="grid-overlay"></div>
+  </div>
 
-        <section id="modeScreen" class="mode-screen">
-            <p class="eyebrow">THE ULTIMATE NEON BATTLE</p>
-            <h1>TIC TAC <span>TOE</span></h1>
-            <p class="subtitle">Choose your opponent and enter the arena.</p>
+  <main class="app">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="XO Overdrive home">
+        <span class="brand-mark">XO</span>
+        <span class="brand-name">NEON<span>XO</span></span>
+      </a>
 
-            <div class="mode-cards">
-                <article class="mode-card">
-                    <div class="mode-icon">🤖</div>
-                    <h2>VS COMPUTER</h2>
-                    <p>Challenge the AI and prove your skills.</p>
+      <button
+        id="muteBtn"
+        class="sound-btn"
+        type="button"
+        aria-pressed="false"
+        aria-label="Mute sound"
+      >
+        <span id="soundIcon">🔊</span>
+        <span id="soundLabel">Sound On</span>
+      </button>
+    </header>
 
-                    <label for="difficulty">AI difficulty</label>
-                    <select id="difficulty">
-                        <option value="easy">Easy</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="hard">Hard</option>
-                    </select>
-
-                    <button id="aiModeBtn" class="primary-btn" type="button">
-                        PLAY VS AI
-                    </button>
-                </article>
-
-                <article class="mode-card">
-                    <div class="mode-icon">👥</div>
-                    <h2>VS FRIEND</h2>
-                    <p>Play locally with another player.</p>
-                    <div class="mode-spacer"></div>
-                    <button id="humanModeBtn" class="secondary-btn" type="button">
-                        TWO PLAYERS
-                    </button>
-                </article>
-            </div>
-        </section>
-
-        <section id="gameScreen" class="game-screen" hidden>
-            <div class="game-heading">
-                <p class="eyebrow">THE BATTLE IS ON</p>
-                <h1>NEON <span>ARENA</span></h1>
-                <p id="modeLabel" class="subtitle">VS COMPUTER</p>
-            </div>
-
-            <div class="scoreboard">
-                <div class="score-card x-score">
-                    <span class="player-label">PLAYER X</span>
-                    <strong id="xScore">0</strong>
-                </div>
-                <div class="score-card draw-score">
-                    <span class="player-label">DRAWS</span>
-                    <strong id="drawScore">0</strong>
-                </div>
-                <div class="score-card o-score">
-                    <span class="player-label" id="oLabel">PLAYER O</span>
-                    <strong id="oScore">0</strong>
-                </div>
-            </div>
-
-            <div class="arena">
-                <p id="status" class="status" aria-live="polite">PLAYER X'S TURN</p>
-
-                <div id="board" class="board" role="group" aria-label="Tic Tac Toe board">
-                    <button class="cell" data-index="0" aria-label="Cell 1"></button>
-                    <button class="cell" data-index="1" aria-label="Cell 2"></button>
-                    <button class="cell" data-index="2" aria-label="Cell 3"></button>
-                    <button class="cell" data-index="3" aria-label="Cell 4"></button>
-                    <button class="cell" data-index="4" aria-label="Cell 5"></button>
-                    <button class="cell" data-index="5" aria-label="Cell 6"></button>
-                    <button class="cell" data-index="6" aria-label="Cell 7"></button>
-                    <button class="cell" data-index="7" aria-label="Cell 8"></button>
-                    <button class="cell" data-index="8" aria-label="Cell 9"></button>
-                </div>
-
-                <div class="game-actions">
-                    <button id="newRoundBtn" class="primary-btn" type="button">
-                        ↻ NEW ROUND
-                    </button>
-                    <button id="changeModeBtn" class="secondary-btn" type="button">
-                        CHANGE MODE
-                    </button>
-                    <button id="resetScoresBtn" class="text-btn" type="button">
-                        RESET STATS
-                    </button>
-                </div>
-            </div>
-
-            <section class="stats-section">
-                <div class="section-heading">
-                    <div>
-                        <p class="eyebrow">YOUR PERFORMANCE</p>
-                        <h2>GAME <span>STATS</span></h2>
-                    </div>
-                    <span id="totalGames" class="total-badge">0 GAMES</span>
-                </div>
-
-                <div class="stats-grid">
-                    <article class="stat-card">
-                        <span>PLAYER X WINS</span>
-                        <strong id="xWinsStat">0</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span>PLAYER O WINS</span>
-                        <strong id="oWinsStat">0</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span>DRAWS</span>
-                        <strong id="drawsStat">0</strong>
-                    </article>
-                    <article class="stat-card">
-                        <span>X WIN RATE</span>
-                        <strong id="winRateStat">0%</strong>
-                    </article>
-                </div>
-
-                <div class="history-panel">
-                    <div class="history-heading">
-                        <h3>RECENT MATCHES</h3>
-                        <button id="clearHistoryBtn" class="text-btn" type="button">
-                            CLEAR HISTORY
-                        </button>
-                    </div>
-                    <ul id="historyList" class="history-list">
-                        <li class="empty-history">Your completed matches will appear here.</li>
-                    </ul>
-                </div>
-            </section>
-        </section>
-
-        <footer>BUILT FOR THE COMPETITIVE SPIRIT <span>✦</span></footer>
-    </main>
-
-    <div id="celebration" class="celebration" hidden>
-        <div class="celebration-card">
-            <div id="celebrationIcon" class="celebration-icon">🏆</div>
-            <p id="celebrationEyebrow" class="eyebrow">MATCH COMPLETE</p>
-            <h2 id="celebrationTitle">VICTORY!</h2>
-            <p id="celebrationMessage">Amazing game!</p>
-            <div class="celebration-actions">
-                <button id="playAgainBtn" class="primary-btn" type="button">
-                    PLAY AGAIN
-                </button>
-                <button id="celebrationCloseBtn" class="secondary-btn" type="button">
-                    VIEW STATS
-                </button>
-            </div>
+    <!-- Main menu -->
+    <section id="modeScreen" class="screen mode-screen">
+      <div class="hero">
+        <div class="eyebrow">
+          <span class="eyebrow-line"></span>
+          THE ULTIMATE BATTLE
+          <span class="eyebrow-line"></span>
         </div>
-        <div id="confettiLayer" class="confetti-layer" aria-hidden="true"></div>
-    </div>
 
-    <script src="./tictactoe.js"></script>
+        <h1 class="hero-title">
+          TIC TAC <span>TOE</span>
+        </h1>
+
+        <p class="hero-description">
+          Three in a row. One winner. Infinite bragging rights.
+        </p>
+
+        <div class="hero-decoration" aria-hidden="true">
+          <span class="deco-x">X</span>
+          <span class="deco-o">O</span>
+          <span class="deco-x">X</span>
+        </div>
+      </div>
+
+      <div class="mode-heading">
+        <span class="section-kicker">CHOOSE YOUR BATTLE</span>
+        <h2>Select Game Mode</h2>
+        <p>How do you want to play today?</p>
+      </div>
+
+      <div class="mode-cards">
+        <button id="aiModeBtn" class="mode-card ai-card" type="button">
+          <span class="mode-card-icon">🤖</span>
+          <span class="mode-card-title">VS COMPUTER</span>
+          <span class="mode-card-description">
+            Challenge the AI and test your strategy.
+          </span>
+          <span class="mode-card-footer">
+            <span>PLAYER VS AI</span>
+            <span class="arrow">↗</span>
+          </span>
+        </button>
+
+        <button id="humanModeBtn" class="mode-card human-card" type="button">
+          <span class="mode-card-icon">👥</span>
+          <span class="mode-card-title">VS FRIEND</span>
+          <span class="mode-card-description">
+            Challenge a friend on the same device.
+          </span>
+          <span class="mode-card-footer">
+            <span>PLAYER VS PLAYER</span>
+            <span class="arrow">↗</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="difficulty-panel">
+        <label for="difficulty">AI DIFFICULTY</label>
+        <select id="difficulty">
+          <option value="easy">Easy — Just for fun</option>
+          <option value="medium" selected>Medium — A fair challenge</option>
+          <option value="hard">Hard — Unbeatable strategy</option>
+        </select>
+      </div>
+
+      <p class="menu-hint">
+        <span class="hint-dot"></span>
+        Choose a mode to enter the arena
+      </p>
+    </section>
+
+    <!-- Game screen -->
+    <section id="gameScreen" class="screen game-screen" hidden>
+      <div class="game-heading">
+        <div>
+          <div class="section-kicker">THE ARENA IS YOURS</div>
+          <h1 class="game-title">XO <span>ARENA</span></h1>
+          <p id="modeLabel" class="mode-label">PLAYER VS COMPUTER</p>
+        </div>
+
+        <button id="backToMenuBtn" class="icon-btn" type="button" aria-label="Back to menu" title="Back to menu">
+          ←
+        </button>
+      </div>
+
+      <div class="scoreboard">
+        <div class="score-card score-x">
+          <span class="score-symbol">X</span>
+          <span class="score-player">PLAYER X</span>
+          <strong id="xScore">0</strong>
+        </div>
+
+        <div class="score-card score-draw">
+          <span class="score-symbol">＝</span>
+          <span class="score-player">DRAWS</span>
+          <strong id="drawScore">0</strong>
+        </div>
+
+        <div class="score-card score-o">
+          <span class="score-symbol">O</span>
+          <span id="oLabel" class="score-player">PLAYER O</span>
+          <strong id="oScore">0</strong>
+        </div>
+      </div>
+
+      <div class="arena">
+        <div class="arena-top">
+          <div class="live-indicator">
+            <span class="live-dot"></span>
+            LIVE MATCH
+          </div>
+          <span class="arena-tag">BEST OF YOUR STRATEGY</span>
+        </div>
+
+        <p id="status" class="status" aria-live="polite">
+          Player X's turn
+        </p>
+
+        <div id="board" class="board" role="group" aria-label="Tic Tac Toe board">
+          <button class="cell" data-index="0" type="button" aria-label="Row 1, column 1"></button>
+          <button class="cell" data-index="1" type="button" aria-label="Row 1, column 2"></button>
+          <button class="cell" data-index="2" type="button" aria-label="Row 1, column 3"></button>
+          <button class="cell" data-index="3" type="button" aria-label="Row 2, column 1"></button>
+          <button class="cell" data-index="4" type="button" aria-label="Row 2, column 2"></button>
+          <button class="cell" data-index="5" type="button" aria-label="Row 2, column 3"></button>
+          <button class="cell" data-index="6" type="button" aria-label="Row 3, column 1"></button>
+          <button class="cell" data-index="7" type="button" aria-label="Row 3, column 2"></button>
+          <button class="cell" data-index="8" type="button" aria-label="Row 3, column 3"></button>
+        </div>
+
+        <div class="board-legend">
+          <span><i class="legend-x">X</i> PLAYER X</span>
+          <span class="legend-divider"></span>
+          <span><i class="legend-o">O</i> PLAYER O</span>
+        </div>
+      </div>
+
+      <div class="game-actions">
+        <button id="newRoundBtn" class="primary-btn" type="button">
+          <span>↻</span> New Round
+        </button>
+        <button id="changeModeBtn" class="secondary-btn" type="button">
+          Change Mode
+        </button>
+        <button id="resetScoresBtn" class="secondary-btn reset-btn" type="button">
+          Reset Scores
+        </button>
+      </div>
+
+      <!-- Background music -->
+      <section class="music-panel" aria-label="Background music">
+        <div class="music-info">
+          <span class="music-icon">♫</span>
+          <div>
+            <span class="music-kicker">ARENA SOUNDTRACK</span>
+            <p>Background Music</p>
+            <span id="musicStatus" class="music-status" aria-live="polite">
+              Starts when your game begins
+            </span>
+          </div>
+        </div>
+
+        <div class="music-controls">
+          <button id="musicToggleBtn" class="music-toggle" type="button">
+            ▶ Play Music
+          </button>
+          <label class="volume-control" for="musicVolume">
+            <span>VOL</span>
+            <input id="musicVolume" type="range" min="0" max="100" value="30">
+          </label>
+        </div>
+      </section>
+
+      <audio id="backgroundMusic" preload="auto" loop>
+        <source src="./music.mp3" type="audio/mpeg">
+        Your browser does not support audio.
+      </audio>
+
+      <section class="stats-section">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">YOUR PERFORMANCE</span>
+            <h2>Match Statistics</h2>
+          </div>
+          <span class="stats-icon">▥</span>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span>Total Games</span>
+            <strong id="totalGames">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>X Wins</span>
+            <strong id="xWinsStat" class="text-blue">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>O Wins</span>
+            <strong id="oWinsStat" class="text-pink">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Draws</span>
+            <strong id="drawsStat">0</strong>
+          </div>
+          <div class="stat-card stat-wide">
+            <span>Player X Win Rate</span>
+            <strong id="winRateStat">0%</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="history-section">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">RECENT BATTLES</span>
+            <h2>Match History</h2>
+          </div>
+          <button id="clearHistoryBtn" class="text-btn" type="button">
+            Clear history
+          </button>
+        </div>
+
+        <div id="historyList" class="history-list">
+          <div class="empty-history">
+            <span>⌁</span>
+            <p>No matches recorded yet.</p>
+            <small>Your recent results will appear here.</small>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="footer">
+      <span>NEON<span class="footer-x">XO</span></span>
+      <span>THINK FAST. PLAY SMART.</span>
+    </footer>
+  </main>
+
+  <!-- Win / draw celebration -->
+  <div id="celebration" class="celebration-overlay" hidden>
+    <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+
+    <section class="celebration-card" role="dialog" aria-modal="true" aria-labelledby="celebrationTitle">
+      <button id="celebrationCloseBtn" class="celebration-close" type="button" aria-label="Close celebration">
+        ×
+      </button>
+
+      <div id="celebrationIcon" class="celebration-icon">🏆</div>
+      <span id="celebrationEyebrow" class="celebration-eyebrow">VICTORY</span>
+      <h2 id="celebrationTitle">PLAYER X WINS!</h2>
+      <p id="celebrationMessage">An incredible move. The arena is yours.</p>
+
+      <button id="playAgainBtn" class="primary-btn celebration-play-btn" type="button">
+        Play Again <span>↗</span>
+      </button>
+    </section>
+  </div>
+
+  <script src="./tictactoe.js"></script>
 </body>
 </html>
